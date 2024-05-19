@@ -41,7 +41,7 @@ Note: This project is only tested with Python 3.11
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/your-repo/timberborn-dashboard.git
+    git clone https://github.com/amine101/timberborn-dashboard.git
     cd timberborn-dashboard
     ```
 
