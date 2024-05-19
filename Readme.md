@@ -28,12 +28,19 @@ project_directory/
 - Display current game statistics including clean water amount and weather info.
 - Visualize water depth, contamination, moisture, and soil contamination heatmaps.
 
+
+   ![App Dashboard](demos/app_dashboard.gif)
+
+
 ### historical_dashboard.py
 
 - Load and display historical data.
 - Animated heatmaps for water depth, contamination, moisture, and soil contamination.
 - Graph to visualize total water amount over time.
 - Slider to scroll through different days and cycles.
+
+   ![App Dashboard](demos/historical_dashboard.gif)
+
 
 ## Installation
 
