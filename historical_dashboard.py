@@ -26,11 +26,21 @@ app.layout = dbc.Container([
     ]),
     dbc.Row([
         dbc.Col([
-            dcc.Graph(id='water-depth-heatmap', className='mb-4'),
-            dcc.Graph(id='contamination-heatmap', className='mb-4')
+            html.H2("Historical Water Depth Heatmap"),
+            dcc.Graph(id='water-depth-heatmap', className='mb-4')
         ], width=6),
         dbc.Col([
-            dcc.Graph(id='moisture-heatmap', className='mb-4'),
+            html.H2("Historical Contamination Heatmap"),
+            dcc.Graph(id='contamination-heatmap', className='mb-4')
+        ], width=6)
+    ]),
+    dbc.Row([
+        dbc.Col([
+            html.H2("Historical Moisture Levels Heatmap"),
+            dcc.Graph(id='moisture-heatmap', className='mb-4')
+        ], width=6),
+        dbc.Col([
+            html.H2("Historical Soil Contamination Heatmap"),
             dcc.Graph(id='soil-contamination-heatmap', className='mb-4')
         ], width=6)
     ]),
