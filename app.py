@@ -3,15 +3,13 @@ import json
 import zipfile
 import numpy as np
 import plotly.express as px
-from plotly.graph_objs import Layout
+import plotly.graph_objects as go
 import dash
 from dash import Dash, dcc, html, Input, Output, State, callback_context
 import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
 
-
-from utils.tools import   SaveFileHandler, HistoricalDataHandler, SettingsModifier, WeatherAndWaterAndMoistureInfo
-
+from utils.tools import SaveFileHandler, HistoricalDataHandler, SettingsModifier, WeatherAndWaterAndMoistureInfo
 
 # Initialize Dash app
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -71,8 +69,16 @@ app.layout = dbc.Container([
         ])
     ]),
     dbc.Row([
+        dbc.Col(html.H2("Water Depth Heatmap", className='text-center'), width=6),
+        dbc.Col(html.H2("Contamination Heatmap", className='text-center'), width=6)
+    ]),
+    dbc.Row([
         dbc.Col(dcc.Graph(id='water-depth-heatmap', className='mb-4'), width=6),
         dbc.Col(dcc.Graph(id='contamination-heatmap', className='mb-4'), width=6)
+    ]),
+    dbc.Row([
+        dbc.Col(html.H2("Moisture Heatmap", className='text-center'), width=6),
+        dbc.Col(html.H2("Soil Contamination Heatmap", className='text-center'), width=6)
     ]),
     dbc.Row([
         dbc.Col(dcc.Graph(id='moisture-heatmap', className='mb-4'), width=6),
@@ -81,6 +87,24 @@ app.layout = dbc.Container([
     dbc.Row([
         dbc.Col(html.Div(id='latest-save-file', className='mb-2'))
     ]),
+    dbc.Toast(
+        id="update-success-toast",
+        header="Update Successful",
+        is_open=False,
+        duration=4000,
+        children=[html.Div("Save file modified successfully. Please reload the save to take effect.")],
+        icon="success",
+        style={"position": "fixed", "top": 10, "right": 10, "width": 350}
+    ),
+    dbc.Toast(
+        id="update-fail-toast",
+        header="Update Failed",
+        is_open=False,
+        duration=4000,
+        children=[html.Div("Failed to modify the save file. Please try again.")],
+        icon="danger",
+        style={"position": "fixed", "top": 10, "right": 10, "width": 350}
+    ),
     dcc.Interval(
         id='interval-component',
         interval=10*1000,  # 10 seconds
@@ -160,20 +184,30 @@ def process_save_files(files, save_handler):
     moisture_levels_matrix = np.array(historical_data[-1]["moisture_levels_matrix"])
     soil_contamination_matrix = np.array(historical_data[-1]["soil_contamination_matrix"])
 
-    water_depth_fig = px.imshow(water_levels_matrix, color_continuous_scale='Blues', title='Water Depth Heatmap')
-    water_depth_fig.update_layout(width=800, height=800)
+    # Common layout for all heatmaps
+    common_layout = dict(
+        width=650,
+        height=650,
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        margin=dict(l=0, r=0, t=0, b=0),
+        coloraxis_showscale=True
+    )
+
+    water_depth_fig = px.imshow(water_levels_matrix, color_continuous_scale='Blues')
+    water_depth_fig.update_layout(common_layout)
     water_depth_fig.update_traces(hovertemplate='x: %{x}<br>y: %{y}<br>Water Depth: %{z:.2f}')
 
-    contamination_fig = px.imshow(contamination_matrix, color_continuous_scale='Reds', title='Contamination Heatmap')
-    contamination_fig.update_layout(width=800, height=800)
+    contamination_fig = px.imshow(contamination_matrix, color_continuous_scale='Reds')
+    contamination_fig.update_layout(common_layout)
     contamination_fig.update_traces(hovertemplate='x: %{x}<br>y: %{y}<br>Contamination Percentage: %{z:.2f}')
 
-    moisture_fig = px.imshow(moisture_levels_matrix, color_continuous_scale='Greens', title='Moisture Levels Heatmap')
-    moisture_fig.update_layout(width=800, height=800)
+    moisture_fig = px.imshow(moisture_levels_matrix, color_continuous_scale='Greens')
+    moisture_fig.update_layout(common_layout)
     moisture_fig.update_traces(hovertemplate='x: %{x}<br>y: %{y}<br>Moisture Level: %{z:.2f}')
 
-    soil_contamination_fig = px.imshow(soil_contamination_matrix, color_continuous_scale='Oranges', title='Soil Contamination Heatmap')
-    soil_contamination_fig.update_layout(width=800, height=800)
+    soil_contamination_fig = px.imshow(soil_contamination_matrix, color_continuous_scale='Oranges')
+    soil_contamination_fig.update_layout(common_layout)
     soil_contamination_fig.update_traces(hovertemplate='x: %{x}<br>y: %{y}<br>Soil Contamination: %{z:.2f}')
 
     latest_file_path = files[-1] if files else "No files found"
@@ -201,7 +235,9 @@ def process_save_files(files, save_handler):
         Output('contamination-heatmap', 'figure'),
         Output('moisture-heatmap', 'figure'),
         Output('soil-contamination-heatmap', 'figure'),
-        Output('latest-save-file', 'children')
+        Output('latest-save-file', 'children'),
+        Output('update-success-toast', 'is_open'),
+        Output('update-fail-toast', 'is_open')
     ],
     [
         Input('load-save-button', 'n_clicks'),
@@ -228,13 +264,13 @@ def handle_buttons(load_clicks, update_clicks, n_intervals, folder_path, tempera
 
     if button_id == 'load-save-button':
         if folder_path is None or not os.path.isdir(sanitize_folder_path(folder_path)):
-            return [html.Span("Please enter a valid folder path.", style={"color": "red"})] * 16
+            return [html.Span("Please enter a valid folder path.", style={"color": "red"})] * 16 + [False, False]
 
         files, save_handler = load_save_files(folder_path, analyze_all)
         if not files:
-            return [html.Span("No save file found in the specified directory.", style={"color": "red"})] * 16
+            return [html.Span("No save file found in the specified directory.", style={"color": "red"})] * 16 + [False, False]
 
-        return (folder_path, *process_save_files(files, save_handler))
+        return (folder_path, *process_save_files(files, save_handler), False, False)
 
     elif button_id == 'update-save-button' and update_clicks:
         if folder_path:
@@ -242,11 +278,11 @@ def handle_buttons(load_clicks, update_clicks, n_intervals, folder_path, tempera
             save_handler = SaveFileHandler(folder_path)
             latest_file = save_handler.load_latest_file()
             if not latest_file:
-                raise PreventUpdate
+                return dash.no_update + (False, True)
 
             game_data = save_handler.read_world_data(latest_file)
             if not game_data:
-                raise PreventUpdate
+                return dash.no_update + (False, True)
 
             modifier = SettingsModifier(game_data)
 
@@ -259,13 +295,16 @@ def handle_buttons(load_clicks, update_clicks, n_intervals, folder_path, tempera
                 'badtide_max': badtide_max,
             }
 
-            modifier.update_settings(new_values)
-            save_handler.save_world_data(latest_file, game_data)
-
-            return (
-                folder_path, temperate_min, temperate_max, drought_min, drought_max, badtide_min, badtide_max,
-                "", "", go.Figure(), go.Figure(), go.Figure(), go.Figure(), latest_file
-            )
+            try:
+                modifier.update_settings(new_values)
+                save_handler.save_world_data(latest_file, game_data)
+                return (
+                    folder_path, temperate_min, temperate_max, drought_min, drought_max, badtide_min, badtide_max,
+                    "", "", go.Figure(), go.Figure(), go.Figure(), go.Figure(), latest_file, True, False
+                )
+            except Exception as e:
+                print(f"Error occurred: {e}")
+                return dash.no_update + (False, True)
 
     elif button_id == 'interval-component':
         if folder_path is None or not os.path.isdir(sanitize_folder_path(folder_path)):
@@ -275,9 +314,9 @@ def handle_buttons(load_clicks, update_clicks, n_intervals, folder_path, tempera
         if not files:
             return dash.no_update
 
-        return (folder_path, *process_save_files(files, save_handler))
+        return (folder_path, *process_save_files(files, save_handler), False, False)
 
-    return folder_path, temperate_min, temperate_max, drought_min, drought_max, badtide_min, badtide_max, "", "", go.Figure(), go.Figure(), go.Figure(), go.Figure(), ""
+    return folder_path, temperate_min, temperate_max, drought_min, drought_max, badtide_min, badtide_max, "", "", go.Figure(), go.Figure(), go.Figure(), go.Figure(), "", False, False
 
 if __name__ == "__main__":
     app.run_server(debug=True)

@@ -2,9 +2,7 @@ import os
 import dash
 from dash import Dash, dcc, html, Input, Output, State
 import dash_bootstrap_components as dbc
-import plotly.express as px
 import plotly.graph_objs as go
-import json
 import numpy as np
 from dash.exceptions import PreventUpdate
 from utils.tools import HistoricalDataHandler
@@ -76,6 +74,42 @@ def load_historical_data(folder_path):
     historical_data_handler = HistoricalDataHandler(folder_path)
     historical_data = historical_data_handler.get_historical_data()
     return historical_data
+
+# Common function to create heatmap figures
+def create_heatmap_figure(data, frames, colorscale, hovertemplate):
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=data,
+            colorscale=colorscale,
+            hovertemplate=hovertemplate
+        ),
+        frames=frames
+    )
+    
+    fig.update_layout(
+        width=650, height=650,
+        updatemenus=[{
+            "buttons": [
+                {"args": [None, {"frame": {"duration": 500, "redraw": True}, "fromcurrent": True}], "label": "Play", "method": "animate"},
+                {"args": [[None], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate"}], "label": "Pause", "method": "animate"}
+            ],
+            "direction": "left",
+            "pad": {"r": 10, "t": 87},
+            "showactive": False,
+            "type": "buttons",
+            "x": 0.1,
+            "xanchor": "right",
+            "y": 0,
+            "yanchor": "top"
+        }],
+        sliders=[{
+            'steps': [{'args': [[f.name], {'frame': {'duration': 500, 'redraw': True}, 'mode': 'immediate'}], 'label': f.name, 'method': 'animate'} for f in frames],
+            'transition': {'duration': 500},
+            'x': 0.1,
+            'len': 0.9
+        }]
+    )
+    return fig
 
 # Callback to load historical data and update heatmaps and slider
 @app.callback(
@@ -153,133 +187,32 @@ def update_dashboard(n_clicks, folder_path):
         for i, entry in enumerate(historical_data)
     ]
 
-    water_depth_fig = go.Figure(
-        data=go.Heatmap(
-            z=np.array(historical_data[0]["water_levels_matrix"]),
-            colorscale='Blues',
-            hovertemplate='x: %{x}<br>y: %{y}<br>Water Depth: %{z:.2f}<extra></extra>'
-        ),
-        frames=water_depth_frames
-    )
-    contamination_fig = go.Figure(
-        data=go.Heatmap(
-            z=np.array(historical_data[0]["contamination_matrix"]),
-            colorscale='Reds',
-            hovertemplate='x: %{x}<br>y: %{y}<br>Contamination Percentage: %{z:.2f}<extra></extra>'
-        ),
-        frames=contamination_frames
-    )
-    moisture_fig = go.Figure(
-        data=go.Heatmap(
-            z=np.array(historical_data[0]["moisture_levels_matrix"]),
-            colorscale='Greens',
-            hovertemplate='x: %{x}<br>y: %{y}<br>Moisture Level: %{z:.2f}<extra></extra>'
-        ),
-        frames=moisture_frames
-    )
-    soil_contamination_fig = go.Figure(
-        data=go.Heatmap(
-            z=np.array(historical_data[0]["soil_contamination_matrix"]),
-            colorscale='Oranges',
-            hovertemplate='x: %{x}<br>y: %{y}<br>Soil Contamination: %{z:.2f}<extra></extra>'
-        ),
-        frames=soil_contamination_frames
+    water_depth_fig = create_heatmap_figure(
+        data=np.array(historical_data[0]["water_levels_matrix"]),
+        frames=water_depth_frames,
+        colorscale='Blues',
+        hovertemplate='x: %{x}<br>y: %{y}<br>Water Depth: %{z:.2f}<extra></extra>'
     )
 
-    water_depth_fig.update_layout(
-        width=900, height=900,
-        updatemenus=[{
-            "buttons": [
-                {"args": [None, {"frame": {"duration": 500, "redraw": True}, "fromcurrent": True}], "label": "Play", "method": "animate"},
-                {"args": [[None], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate"}], "label": "Pause", "method": "animate"}
-            ],
-            "direction": "left",
-            "pad": {"r": 10, "t": 87},
-            "showactive": False,
-            "type": "buttons",
-            "x": 0.1,
-            "xanchor": "right",
-            "y": 0,
-            "yanchor": "top"
-        }],
-        sliders=[{
-            'steps': [{'args': [[f.name], {'frame': {'duration': 500, 'redraw': True}, 'mode': 'immediate'}], 'label': f.name, 'method': 'animate'} for f in water_depth_frames],
-            'transition': {'duration': 500},
-            'x': 0.1,
-            'len': 0.9
-        }]
+    contamination_fig = create_heatmap_figure(
+        data=np.array(historical_data[0]["contamination_matrix"]),
+        frames=contamination_frames,
+        colorscale='Reds',
+        hovertemplate='x: %{x}<br>y: %{y}<br>Contamination Percentage: %{z:.2f}<extra></extra>'
     )
 
-    contamination_fig.update_layout(
-        width=900, height=900,
-        updatemenus=[{
-            "buttons": [
-                {"args": [None, {"frame": {"duration": 500, "redraw": True}, "fromcurrent": True}], "label": "Play", "method": "animate"},
-                {"args": [[None], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate"}], "label": "Pause", "method": "animate"}
-            ],
-            "direction": "left",
-            "pad": {"r": 10, "t": 87},
-            "showactive": False,
-            "type": "buttons",
-            "x": 0.1,
-            "xanchor": "right",
-            "y": 0,
-            "yanchor": "top"
-        }],
-        sliders=[{
-            'steps': [{'args': [[f.name], {'frame': {'duration': 500, 'redraw': True}, 'mode': 'immediate'}], 'label': f.name, 'method': 'animate'} for f in contamination_frames],
-            'transition': {'duration': 500},
-            'x': 0.1,
-            'len': 0.9
-        }]
+    moisture_fig = create_heatmap_figure(
+        data=np.array(historical_data[0]["moisture_levels_matrix"]),
+        frames=moisture_frames,
+        colorscale='Greens',
+        hovertemplate='x: %{x}<br>y: %{y}<br>Moisture Level: %{z:.2f}<extra></extra>'
     )
 
-    moisture_fig.update_layout(
-        width=900, height=900,
-        updatemenus=[{
-            "buttons": [
-                {"args": [None, {"frame": {"duration": 500, "redraw": True}, "fromcurrent": True}], "label": "Play", "method": "animate"},
-                {"args": [[None], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate"}], "label": "Pause", "method": "animate"}
-            ],
-            "direction": "left",
-            "pad": {"r": 10, "t": 87},
-            "showactive": False,
-            "type": "buttons",
-            "x": 0.1,
-            "xanchor": "right",
-            "y": 0,
-            "yanchor": "top"
-        }],
-        sliders=[{
-            'steps': [{'args': [[f.name], {'frame': {'duration': 500, 'redraw': True}, 'mode': 'immediate'}], 'label': f.name, 'method': 'animate'} for f in moisture_frames],
-            'transition': {'duration': 500},
-            'x': 0.1,
-            'len': 0.9
-        }]
-    )
-
-    soil_contamination_fig.update_layout(
-        width=900, height=900,
-        updatemenus=[{
-            "buttons": [
-                {"args": [None, {"frame": {"duration": 500, "redraw": True}, "fromcurrent": True}], "label": "Play", "method": "animate"},
-                {"args": [[None], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate"}], "label": "Pause", "method": "animate"}
-            ],
-            "direction": "left",
-            "pad": {"r": 10, "t": 87},
-            "showactive": False,
-            "type": "buttons",
-            "x": 0.1,
-            "xanchor": "right",
-            "y": 0,
-            "yanchor": "top"
-        }],
-        sliders=[{
-            'steps': [{'args': [[f.name], {'frame': {'duration': 500, 'redraw': True}, 'mode': 'immediate'}], 'label': f.name, 'method': 'animate'} for f in soil_contamination_frames],
-            'transition': {'duration': 500},
-            'x': 0.1,
-            'len': 0.9
-        }]
+    soil_contamination_fig = create_heatmap_figure(
+        data=np.array(historical_data[0]["soil_contamination_matrix"]),
+        frames=soil_contamination_frames,
+        colorscale='Oranges',
+        hovertemplate='x: %{x}<br>y: %{y}<br>Soil Contamination: %{z:.2f}<extra></extra>'
     )
 
     total_water_fig = go.Figure(
