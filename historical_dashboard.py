@@ -6,6 +6,8 @@ import plotly.graph_objs as go
 import numpy as np
 from dash.exceptions import PreventUpdate
 from utils.tools import HistoricalDataHandler
+import webbrowser
+from threading import Timer
 
 # Initialize Dash app
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -24,21 +26,21 @@ app.layout = dbc.Container([
     ]),
     dbc.Row([
         dbc.Col([
-            html.H2("Historical Water Depth Heatmap"),
+            html.H2("Historical Water Depth"),
             dcc.Graph(id='water-depth-heatmap', className='mb-4')
         ], width=6),
         dbc.Col([
-            html.H2("Historical Contamination Heatmap"),
+            html.H2("Historical Contamination"),
             dcc.Graph(id='contamination-heatmap', className='mb-4')
         ], width=6)
     ]),
     dbc.Row([
         dbc.Col([
-            html.H2("Historical Moisture Levels Heatmap"),
+            html.H2("Historical Soil Moisture Levels"),
             dcc.Graph(id='moisture-heatmap', className='mb-4')
         ], width=6),
         dbc.Col([
-            html.H2("Historical Soil Contamination Heatmap"),
+            html.H2("Historical Soil Contamination"),
             dcc.Graph(id='soil-contamination-heatmap', className='mb-4')
         ], width=6)
     ]),
@@ -230,5 +232,10 @@ def update_dashboard(n_clicks, folder_path):
 
     return water_depth_fig, contamination_fig, moisture_fig, soil_contamination_fig, total_water_fig, min_day, max_day, min_day, marks
 
+# Function to open the browser after a delay
+def open_browser():
+    webbrowser.open_new("http://127.0.0.1:8051/")
+
 if __name__ == "__main__":
-    app.run_server(debug=True, port=8051)
+    Timer(1, open_browser).start()
+    app.run_server(debug=False, port=8051)

@@ -8,7 +8,8 @@ import dash
 from dash import Dash, dcc, html, Input, Output, State, callback_context
 import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
-
+import webbrowser
+from threading import Timer
 from utils.tools import SaveFileHandler, HistoricalDataHandler, SettingsModifier, WeatherAndWaterAndMoistureInfo
 
 # Initialize Dash app
@@ -69,16 +70,16 @@ app.layout = dbc.Container([
         ])
     ]),
     dbc.Row([
-        dbc.Col(html.H2("Water Depth Heatmap", className='text-center'), width=6),
-        dbc.Col(html.H2("Contamination Heatmap", className='text-center'), width=6)
+        dbc.Col(html.H2("Water Depth", className='text-center'), width=6),
+        dbc.Col(html.H2("Contamination", className='text-center'), width=6)
     ]),
     dbc.Row([
         dbc.Col(dcc.Graph(id='water-depth-heatmap', className='mb-4'), width=6),
         dbc.Col(dcc.Graph(id='contamination-heatmap', className='mb-4'), width=6)
     ]),
     dbc.Row([
-        dbc.Col(html.H2("Moisture Heatmap", className='text-center'), width=6),
-        dbc.Col(html.H2("Soil Contamination Heatmap", className='text-center'), width=6)
+        dbc.Col(html.H2("Soil Moisture", className='text-center'), width=6),
+        dbc.Col(html.H2("Soil Contamination", className='text-center'), width=6)
     ]),
     dbc.Row([
         dbc.Col(dcc.Graph(id='moisture-heatmap', className='mb-4'), width=6),
@@ -318,5 +319,10 @@ def handle_buttons(load_clicks, update_clicks, n_intervals, folder_path, tempera
 
     return folder_path, temperate_min, temperate_max, drought_min, drought_max, badtide_min, badtide_max, "", "", go.Figure(), go.Figure(), go.Figure(), go.Figure(), "", False, False
 
+# Function to open the browser after a delay
+def open_browser():
+    webbrowser.open_new("http://127.0.0.1:8050/")
+
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    Timer(1, open_browser).start()
+    app.run_server(debug=False)
