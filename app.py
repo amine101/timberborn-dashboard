@@ -1,6 +1,4 @@
 import os
-import json
-import zipfile
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
@@ -11,6 +9,7 @@ from dash.exceptions import PreventUpdate
 import webbrowser
 from threading import Timer
 from utils.tools import SaveFileHandler, HistoricalDataHandler, SettingsModifier, WeatherAndWaterAndMoistureInfo
+import time 
 
 # Initialize Dash app
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -195,7 +194,8 @@ def process_save_files(files, save_handler):
         coloraxis_showscale=True
     )
 
-    water_depth_fig = px.imshow(water_levels_matrix, color_continuous_scale='Blues')
+    water_depth_fig = px.imshow(water_levels_matrix,   color_continuous_scale='Blues' )
+    
     water_depth_fig.update_layout(common_layout)
     water_depth_fig.update_traces(hovertemplate='x: %{x}<br>y: %{y}<br>Water Depth: %{z:.2f}')
 
@@ -325,4 +325,6 @@ def open_browser():
 
 if __name__ == "__main__":
     Timer(1, open_browser).start()
-    app.run_server(debug=False)
+    app.run_server(debug=False, host="127.0.0.1", port=8050)
+
+    time.sleep(10)

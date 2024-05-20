@@ -1,5 +1,4 @@
 import os
-import dash
 from dash import Dash, dcc, html, Input, Output, State
 import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
@@ -8,6 +7,7 @@ from dash.exceptions import PreventUpdate
 from utils.tools import HistoricalDataHandler
 import webbrowser
 from threading import Timer
+import time 
 
 # Initialize Dash app
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -238,4 +238,6 @@ def open_browser():
 
 if __name__ == "__main__":
     Timer(1, open_browser).start()
-    app.run_server(debug=False, port=8051)
+    app.run_server(debug=False, host="127.0.0.1", port=8051)
+
+    time.sleep(10)
