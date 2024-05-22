@@ -4,11 +4,12 @@ import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
 import numpy as np
 from dash.exceptions import PreventUpdate
-from utils.tools import HistoricalDataHandler
+from utils.tools import HistoricalDataHandler, check_port
 import webbrowser
 from threading import Timer
 import time 
 
+PORT=8051
 # Initialize Dash app
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
@@ -234,10 +235,14 @@ def update_dashboard(n_clicks, folder_path):
 
 # Function to open the browser after a delay
 def open_browser():
-    webbrowser.open_new("http://127.0.0.1:8051/")
+    webbrowser.open_new(f"http://127.0.0.1:{PORT}/")
 
 if __name__ == "__main__":
     Timer(1, open_browser).start()
-    app.run_server(debug=False, host="127.0.0.1", port=8051)
+    if check_port(PORT) : 
+        app.run_server(debug=False, host="127.0.0.1", port=PORT)
+    else :
+        print(f"Error, another instance is already running (port {PORT} in use)")
+
 
     time.sleep(10)

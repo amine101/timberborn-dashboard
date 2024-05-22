@@ -8,9 +8,11 @@ import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
 import webbrowser
 from threading import Timer
-from utils.tools import SaveFileHandler, HistoricalDataHandler, SettingsModifier, WeatherAndWaterAndMoistureInfo
+from utils.tools import SaveFileHandler, HistoricalDataHandler, SettingsModifier, WeatherAndWaterAndMoistureInfo, check_port
 import time 
 
+
+PORT=8050
 # Initialize Dash app
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
@@ -319,12 +321,16 @@ def handle_buttons(load_clicks, update_clicks, n_intervals, folder_path, tempera
 
     return folder_path, temperate_min, temperate_max, drought_min, drought_max, badtide_min, badtide_max, "", "", go.Figure(), go.Figure(), go.Figure(), go.Figure(), "", False, False
 
+
 # Function to open the browser after a delay
 def open_browser():
-    webbrowser.open_new("http://127.0.0.1:8050/")
+    webbrowser.open_new(f"http://127.0.0.1:{PORT}/")
 
 if __name__ == "__main__":
     Timer(1, open_browser).start()
-    app.run_server(debug=False, host="127.0.0.1", port=8050)
+    if check_port(PORT) : 
+        app.run_server(debug=False, host="127.0.0.1", port=PORT)
+    else :
+        print(f"Error, another instance is already running (port {PORT} in use)")
 
     time.sleep(10)
