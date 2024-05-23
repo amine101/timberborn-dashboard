@@ -3,3 +3,6 @@ dash_bootstrap_components==1.0.1
 numpy==1.26.4
 plotly==5.10.0
 pandas==2.2.2
+Flask==2.3.3
+pyinstaller
+psutil
