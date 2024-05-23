@@ -186,7 +186,6 @@ class WeatherAndWaterAndMoistureInfo:
         cleaned_modifiers = [float(modifier.rstrip('.')) for modifier in evaporation_modifiers_str.split()]
         evaporation_modifiers = np.array(cleaned_modifiers)
         evaporation_modifiers_matrix = evaporation_modifiers.reshape((self.height, self.width)).T  # Transpose the matrix
-        self.save_matrix_to_json( evaporation_modifiers_matrix , "output.json")
         return evaporation_modifiers_matrix
 
 
