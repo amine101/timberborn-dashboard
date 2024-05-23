@@ -9,10 +9,10 @@ from dash.exceptions import PreventUpdate
 import webbrowser
 from threading import Timer
 from utils.tools import SaveFileHandler, HistoricalDataHandler, SettingsModifier, WeatherAndWaterAndMoistureInfo, check_port
-import time 
+import time
 
 
-PORT=8050
+PORT = 8050
 # Initialize Dash app
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
@@ -87,6 +87,12 @@ app.layout = dbc.Container([
         dbc.Col(dcc.Graph(id='soil-contamination-heatmap', className='mb-4'), width=6)
     ]),
     dbc.Row([
+        dbc.Col(html.H2("Evaporation Modifiers", className='text-center'), width=6)
+    ]),
+    dbc.Row([
+        dbc.Col(dcc.Graph(id='evaporation-modifiers-heatmap', className='mb-4'), width=6)
+    ]),
+    dbc.Row([
         dbc.Col(html.Div(id='latest-save-file', className='mb-2'))
     ]),
     dbc.Toast(
@@ -134,57 +140,35 @@ def load_save_files(folder_path, analyze_all):
 
 # Helper function to process save files and return required outputs
 def process_save_files(files, save_handler):
-    historical_data_handler = HistoricalDataHandler(save_handler.directory)
-    historical_data = historical_data_handler.get_historical_data()
+    if not files:
+        return [html.Span("No save file found in the specified directory.", style={"color": "red"})] * 18
 
-    for path in files:
-        game_data = save_handler.read_world_data(path)
-        if not game_data:
-            continue
+    path = files[-1]  # Use the latest file
+    game_data = save_handler.read_world_data(path)
+    if not game_data:
+        return [html.Span("Failed to read the save file.", style={"color": "red"})] * 18
 
-        settings_modifier = SettingsModifier(game_data)
-        weather_and_water_info = WeatherAndWaterAndMoistureInfo(game_data)
+    settings_modifier = SettingsModifier(game_data)
+    weather_and_water_info = WeatherAndWaterAndMoistureInfo(game_data)
 
-        clean_water_total = weather_and_water_info.calculate_total_clean_water()
-        weather_info = weather_and_water_info.get_weather_info()
-        current_settings = settings_modifier.get_current_settings()
+    clean_water_total = weather_and_water_info.calculate_total_clean_water()
+    weather_info = weather_and_water_info.get_weather_info()
+    current_settings = settings_modifier.get_current_settings()
 
-        water_levels_matrix = weather_and_water_info.get_water_levels_matrix()
-        contamination_matrix = weather_and_water_info.get_contamination_percentage_matrix()
-        moisture_levels_matrix = weather_and_water_info.get_moisture_levels_matrix()
-        soil_contamination_matrix = weather_and_water_info.get_soil_contamination_matrix()
+    water_levels_matrix = weather_and_water_info.get_water_levels_matrix()
+    contamination_matrix = weather_and_water_info.get_contamination_percentage_matrix()
+    moisture_levels_matrix = weather_and_water_info.get_moisture_levels_matrix()
+    soil_contamination_matrix = weather_and_water_info.get_soil_contamination_matrix()
+    evaporation_modifiers_matrix = weather_and_water_info.get_evaporation_modifiers_matrix()
 
-        clean_water_text = f"Clean Water: {clean_water_total:.2f} cubic meters"
-        weather_info_text = [
-            html.Div(f"Hazardous Weather Duration: {weather_info['HazardousWeatherDuration']} days"), html.Br(),
-            html.Div(f"Is Drought: {'Yes' if weather_info['IsDrought'] else 'No'}"), html.Br(),
-            html.Div(f"Cycle: {weather_info['Cycle']}"), html.Br(),
-            html.Div(f"Cycle Day: {weather_info['CycleDay']}"), html.Br(),
-            html.Div(f"Temperate Weather Duration: {weather_info['TemperateWeatherDuration']} days")
-        ]
-
-        historical_data_entry = {
-            "timestamp": save_handler.latest_timestamp,
-            "clean_water_total": clean_water_total,
-            "water_levels_matrix": water_levels_matrix.tolist(),
-            "contamination_matrix": contamination_matrix.tolist(),
-            "moisture_levels_matrix": moisture_levels_matrix.tolist(),
-            "soil_contamination_matrix": soil_contamination_matrix.tolist(),
-            "weather_info": weather_info,
-            "map_width": weather_and_water_info.width,
-            "map_height": weather_and_water_info.height
-        }
-
-        # Save historical data
-        historical_data_handler.save_historical_data(historical_data_entry)
-
-    if not historical_data:
-        return [html.Span("No save file found in the specified directory.", style={"color": "red"})] * 15
-
-    water_levels_matrix = np.array(historical_data[-1]["water_levels_matrix"])
-    contamination_matrix = np.array(historical_data[-1]["contamination_matrix"])
-    moisture_levels_matrix = np.array(historical_data[-1]["moisture_levels_matrix"])
-    soil_contamination_matrix = np.array(historical_data[-1]["soil_contamination_matrix"])
+    clean_water_text = f"Clean Water: {clean_water_total:.2f} cubic meters"
+    weather_info_text = [
+        html.Div(f"Hazardous Weather Duration: {weather_info['HazardousWeatherDuration']} days"), html.Br(),
+        html.Div(f"Is Drought: {'Yes' if weather_info['IsDrought'] else 'No'}"), html.Br(),
+        html.Div(f"Cycle: {weather_info['Cycle']}"), html.Br(),
+        html.Div(f"Cycle Day: {weather_info['CycleDay']}"), html.Br(),
+        html.Div(f"Temperate Weather Duration: {weather_info['TemperateWeatherDuration']} days")
+    ]
 
     # Common layout for all heatmaps
     common_layout = dict(
@@ -196,8 +180,7 @@ def process_save_files(files, save_handler):
         coloraxis_showscale=True
     )
 
-    water_depth_fig = px.imshow(water_levels_matrix,   color_continuous_scale='Blues' )
-    
+    water_depth_fig = px.imshow(water_levels_matrix, color_continuous_scale='Blues')
     water_depth_fig.update_layout(common_layout)
     water_depth_fig.update_traces(hovertemplate='x: %{x}<br>y: %{y}<br>Water Depth: %{z:.2f}')
 
@@ -213,13 +196,15 @@ def process_save_files(files, save_handler):
     soil_contamination_fig.update_layout(common_layout)
     soil_contamination_fig.update_traces(hovertemplate='x: %{x}<br>y: %{y}<br>Soil Contamination: %{z:.2f}')
 
-    latest_file_path = files[-1] if files else "No files found"
+    evaporation_modifiers_fig = px.imshow(evaporation_modifiers_matrix, color_continuous_scale='Purples')
+    evaporation_modifiers_fig.update_layout(common_layout)
+    evaporation_modifiers_fig.update_traces(hovertemplate='x: %{x}<br>y: %{y}<br>Evaporation Modifier: %{z:.2f}')
 
     return (
         current_settings['temperate_min'], current_settings['temperate_max'],
         current_settings['drought_min'], current_settings['drought_max'],
         current_settings['badtide_min'], current_settings['badtide_max'],
-        clean_water_text, weather_info_text, water_depth_fig, contamination_fig, moisture_fig, soil_contamination_fig, latest_file_path
+        clean_water_text, weather_info_text, water_depth_fig, contamination_fig, moisture_fig, soil_contamination_fig, evaporation_modifiers_fig, path
     )
 
 # Combined callback for loading and updating save
@@ -238,6 +223,7 @@ def process_save_files(files, save_handler):
         Output('contamination-heatmap', 'figure'),
         Output('moisture-heatmap', 'figure'),
         Output('soil-contamination-heatmap', 'figure'),
+        Output('evaporation-modifiers-heatmap', 'figure'),
         Output('latest-save-file', 'children'),
         Output('update-success-toast', 'is_open'),
         Output('update-fail-toast', 'is_open')
@@ -267,11 +253,11 @@ def handle_buttons(load_clicks, update_clicks, n_intervals, folder_path, tempera
 
     if button_id == 'load-save-button':
         if folder_path is None or not os.path.isdir(sanitize_folder_path(folder_path)):
-            return [html.Span("Please enter a valid folder path.", style={"color": "red"})] * 16 + [False, False]
+            return [html.Span("Please enter a valid folder path.", style={"color": "red"})] * 18 + [False, False]
 
         files, save_handler = load_save_files(folder_path, analyze_all)
         if not files:
-            return [html.Span("No save file found in the specified directory.", style={"color": "red"})] * 16 + [False, False]
+            return [html.Span("No save file found in the specified directory.", style={"color": "red"})] * 18 + [False, False]
 
         return (folder_path, *process_save_files(files, save_handler), False, False)
 
@@ -303,7 +289,7 @@ def handle_buttons(load_clicks, update_clicks, n_intervals, folder_path, tempera
                 save_handler.save_world_data(latest_file, game_data)
                 return (
                     folder_path, temperate_min, temperate_max, drought_min, drought_max, badtide_min, badtide_max,
-                    "", "", go.Figure(), go.Figure(), go.Figure(), go.Figure(), latest_file, True, False
+                    "", "", go.Figure(), go.Figure(), go.Figure(), go.Figure(), go.Figure(), latest_file, True, False
                 )
             except Exception as e:
                 print(f"Error occurred: {e}")
@@ -319,8 +305,7 @@ def handle_buttons(load_clicks, update_clicks, n_intervals, folder_path, tempera
 
         return (folder_path, *process_save_files(files, save_handler), False, False)
 
-    return folder_path, temperate_min, temperate_max, drought_min, drought_max, badtide_min, badtide_max, "", "", go.Figure(), go.Figure(), go.Figure(), go.Figure(), "", False, False
-
+    return folder_path, temperate_min, temperate_max, drought_min, drought_max, badtide_min, badtide_max, "", "", go.Figure(), go.Figure(), go.Figure(), go.Figure(), go.Figure(), "", False, False
 
 # Function to open the browser after a delay
 def open_browser():
@@ -328,9 +313,9 @@ def open_browser():
 
 if __name__ == "__main__":
     Timer(1, open_browser).start()
-    if check_port(PORT) : 
+    if check_port(PORT):
         app.run_server(debug=False, host="127.0.0.1", port=PORT)
-    else :
+    else:
         print(f"Error, another instance is already running (port {PORT} in use)")
 
     time.sleep(10)

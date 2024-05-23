@@ -2,6 +2,7 @@ import os
 import json
 import zipfile
 import numpy as np
+import socket 
 
 # Class to handle save file operations
 class SaveFileHandler:
@@ -132,11 +133,14 @@ class WeatherAndWaterAndMoistureInfo:
         contamination_levels_str = self.game_data['Singletons']['ContaminationMap']['Contaminations']['Array']
         water_depths = np.array([float(depth) for depth in water_depths_str.split()])
         contamination_levels = np.array([float(level) for level in contamination_levels_str.split()])
-        clean_water_depths = water_depths * (1 - contamination_levels)
-        total_clean_water = np.sum(clean_water_depths)
+        
+        # Calculate pure water amount
+        pure_water_depths = water_depths - (water_depths * contamination_levels)
+        total_clean_water = np.sum(pure_water_depths)
+        
         self.clean_water_levels.append(total_clean_water)
         return total_clean_water
-
+    
     def get_weather_info(self):
         hazardous_weather = self.game_data['Singletons']['HazardousWeatherService']
         weather_service = self.game_data['Singletons']['WeatherService']
@@ -174,3 +178,25 @@ class WeatherAndWaterAndMoistureInfo:
         soil_contamination = np.array([float(level) for level in soil_contamination_str.split()])
         soil_contamination_matrix = soil_contamination.reshape((self.height, self.width)).T  # Transpose the matrix
         return soil_contamination_matrix
+    
+
+    def get_evaporation_modifiers_matrix(self):
+        evaporation_modifiers_str = self.game_data['Singletons']['WaterEvaporationMap']['EvaporationModifiers']['Array']
+        # Remove trailing dot characters if present and convert to float
+        cleaned_modifiers = [float(modifier.rstrip('.')) for modifier in evaporation_modifiers_str.split()]
+        evaporation_modifiers = np.array(cleaned_modifiers)
+        evaporation_modifiers_matrix = evaporation_modifiers.reshape((self.height, self.width)).T  # Transpose the matrix
+        self.save_matrix_to_json( evaporation_modifiers_matrix , "output.json")
+        return evaporation_modifiers_matrix
+
+
+
+# Function to check and terminate previous instances of the app
+def check_port(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(("127.0.0.1", port))
+            s.close()
+            return True  # The port is available
+        except socket.error:
+            return False  # The port is in use

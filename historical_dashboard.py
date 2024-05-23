@@ -7,9 +7,9 @@ from dash.exceptions import PreventUpdate
 from utils.tools import HistoricalDataHandler, check_port
 import webbrowser
 from threading import Timer
-import time 
+import time
 
-PORT=8051
+PORT = 8051
 # Initialize Dash app
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
@@ -43,6 +43,12 @@ app.layout = dbc.Container([
         dbc.Col([
             html.H2("Historical Soil Contamination"),
             dcc.Graph(id='soil-contamination-heatmap', className='mb-4')
+        ], width=6)
+    ]),
+    dbc.Row([
+        dbc.Col([
+            html.H2("Historical Evaporation Modifiers"),
+            dcc.Graph(id='evaporation-heatmap', className='mb-4')
         ], width=6)
     ]),
     dbc.Row([
@@ -121,6 +127,7 @@ def create_heatmap_figure(data, frames, colorscale, hovertemplate):
         Output('contamination-heatmap', 'figure'),
         Output('moisture-heatmap', 'figure'),
         Output('soil-contamination-heatmap', 'figure'),
+        Output('evaporation-heatmap', 'figure'),
         Output('total-water-graph', 'figure'),
         Output('day-slider', 'min'),
         Output('day-slider', 'max'),
@@ -142,10 +149,15 @@ def update_dashboard(n_clicks, folder_path):
     total_water = [entry['clean_water_total'] for entry in historical_data]
     cycle_days = [f"[{entry['weather_info']['Cycle']}|{entry['weather_info']['CycleDay']}]" for entry in historical_data]
 
+    def get_matrix(entry, key, shape):
+        return np.array(entry.get(key, np.zeros(shape)))
+
+    width, height = historical_data[0]['map_width'], historical_data[0]['map_height']
+    
     water_depth_frames = [
         go.Frame(
             data=go.Heatmap(
-                z=np.array(entry["water_levels_matrix"]),
+                z=get_matrix(entry, "water_levels_matrix", (height, width)),
                 colorscale='Blues',
                 hovertemplate='x: %{x}<br>y: %{y}<br>Water Depth: %{z:.2f}<extra></extra>'
             ),
@@ -157,7 +169,7 @@ def update_dashboard(n_clicks, folder_path):
     contamination_frames = [
         go.Frame(
             data=go.Heatmap(
-                z=np.array(entry["contamination_matrix"]),
+                z=get_matrix(entry, "contamination_matrix", (height, width)),
                 colorscale='Reds',
                 hovertemplate='x: %{x}<br>y: %{y}<br>Contamination Percentage: %{z:.2f}<extra></extra>'
             ),
@@ -169,7 +181,7 @@ def update_dashboard(n_clicks, folder_path):
     moisture_frames = [
         go.Frame(
             data=go.Heatmap(
-                z=np.array(entry["moisture_levels_matrix"]),
+                z=get_matrix(entry, "moisture_levels_matrix", (height, width)),
                 colorscale='Greens',
                 hovertemplate='x: %{x}<br>y: %{y}<br>Moisture Level: %{z:.2f}<extra></extra>'
             ),
@@ -181,7 +193,7 @@ def update_dashboard(n_clicks, folder_path):
     soil_contamination_frames = [
         go.Frame(
             data=go.Heatmap(
-                z=np.array(entry["soil_contamination_matrix"]),
+                z=get_matrix(entry, "soil_contamination_matrix", (height, width)),
                 colorscale='Oranges',
                 hovertemplate='x: %{x}<br>y: %{y}<br>Soil Contamination: %{z:.2f}<extra></extra>'
             ),
@@ -190,32 +202,51 @@ def update_dashboard(n_clicks, folder_path):
         for i, entry in enumerate(historical_data)
     ]
 
+    evaporation_frames = [
+        go.Frame(
+            data=go.Heatmap(
+                z=get_matrix(entry, "evaporation_modifiers_matrix", (height, width)),
+                colorscale='Purples',
+                hovertemplate='x: %{x}<br>y: %{y}<br>Evaporation Modifier: %{z:.2f}<extra></extra>'
+            ),
+            name=cycle_days[i]
+        )
+        for i, entry in enumerate(historical_data)
+    ]
+
     water_depth_fig = create_heatmap_figure(
-        data=np.array(historical_data[0]["water_levels_matrix"]),
+        data=get_matrix(historical_data[0], "water_levels_matrix", (height, width)),
         frames=water_depth_frames,
         colorscale='Blues',
         hovertemplate='x: %{x}<br>y: %{y}<br>Water Depth: %{z:.2f}<extra></extra>'
     )
 
     contamination_fig = create_heatmap_figure(
-        data=np.array(historical_data[0]["contamination_matrix"]),
+        data=get_matrix(historical_data[0], "contamination_matrix", (height, width)),
         frames=contamination_frames,
         colorscale='Reds',
         hovertemplate='x: %{x}<br>y: %{y}<br>Contamination Percentage: %{z:.2f}<extra></extra>'
     )
 
     moisture_fig = create_heatmap_figure(
-        data=np.array(historical_data[0]["moisture_levels_matrix"]),
+        data=get_matrix(historical_data[0], "moisture_levels_matrix", (height, width)),
         frames=moisture_frames,
         colorscale='Greens',
         hovertemplate='x: %{x}<br>y: %{y}<br>Moisture Level: %{z:.2f}<extra></extra>'
     )
 
     soil_contamination_fig = create_heatmap_figure(
-        data=np.array(historical_data[0]["soil_contamination_matrix"]),
+        data=get_matrix(historical_data[0], "soil_contamination_matrix", (height, width)),
         frames=soil_contamination_frames,
         colorscale='Oranges',
         hovertemplate='x: %{x}<br>y: %{y}<br>Soil Contamination: %{z:.2f}<extra></extra>'
+    )
+
+    evaporation_fig = create_heatmap_figure(
+        data=get_matrix(historical_data[0], "evaporation_modifiers_matrix", (height, width)),
+        frames=evaporation_frames,
+        colorscale='Purples',
+        hovertemplate='x: %{x}<br>y: %{y}<br>Evaporation Modifier: %{z:.2f}<extra></extra>'
     )
 
     total_water_fig = go.Figure(
@@ -231,7 +262,7 @@ def update_dashboard(n_clicks, folder_path):
     max_day = len(historical_data) - 1
     marks = {i: cycle_days[i] for i in range(len(cycle_days))}
 
-    return water_depth_fig, contamination_fig, moisture_fig, soil_contamination_fig, total_water_fig, min_day, max_day, min_day, marks
+    return water_depth_fig, contamination_fig, moisture_fig, soil_contamination_fig, evaporation_fig, total_water_fig, min_day, max_day, min_day, marks
 
 # Function to open the browser after a delay
 def open_browser():
@@ -239,10 +270,9 @@ def open_browser():
 
 if __name__ == "__main__":
     Timer(1, open_browser).start()
-    if check_port(PORT) : 
+    if check_port(PORT):
         app.run_server(debug=False, host="127.0.0.1", port=PORT)
-    else :
+    else:
         print(f"Error, another instance is already running (port {PORT} in use)")
-
 
     time.sleep(10)
