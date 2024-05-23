@@ -150,7 +150,7 @@ def update_dashboard(n_clicks, folder_path):
     cycle_days = [f"[{entry['weather_info']['Cycle']}|{entry['weather_info']['CycleDay']}]" for entry in historical_data]
 
     def get_matrix(entry, key, shape):
-        return np.array(entry.get(key, np.zeros(shape)))
+        return  np.flipud(np.array(entry.get(key, np.zeros(shape)))  )
 
     width, height = historical_data[0]['map_width'], historical_data[0]['map_height']
     
