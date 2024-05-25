@@ -11,10 +11,18 @@ from threading import Timer
 from utils.tools import SaveFileHandler, HistoricalDataHandler, SettingsModifier, WeatherAndWaterAndMoistureInfo, check_port
 import time
 
-
 PORT = 8050
 # Initialize Dash app
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+
+# Helper function to get user directory suggestions
+def get_folder_suggestions():
+    user = os.getlogin()
+    possible_dirs = [
+        f"C:\\Users\\{user}\\Documents\\Timberborn\\Saves",
+        f"C:\\Users\\{user}\\Documents\\Timberborn\\ExperimentalSaves",
+    ]
+    return f"Game save folders are in: {', '.join(possible_dirs)}"
 
 # Define the layout
 app.layout = dbc.Container([
@@ -25,7 +33,7 @@ app.layout = dbc.Container([
         dbc.Col([
             html.Label("Save Folder Path:"),
             dbc.Input(id='folder-path-input', type='text', placeholder="Enter folder path here...", className='mb-2'),
-            html.Div(id='folder-path', className='mb-2'),
+            html.Div(get_folder_suggestions(), id='folder-suggestions', className='mb-2', style={"color": "blue"}),  # Suggestions for game save directory
             dbc.Checkbox(
                 id='analyze-all-files',
                 className="mb-3",
@@ -169,6 +177,23 @@ def process_save_files(files, save_handler):
         html.Div(f"Cycle Day: {weather_info['CycleDay']}"), html.Br(),
         html.Div(f"Temperate Weather Duration: {weather_info['TemperateWeatherDuration']} days")
     ]
+
+    historical_data_handler = HistoricalDataHandler(save_handler.directory)
+    historical_data_entry = {
+        "timestamp": save_handler.latest_timestamp,
+        "clean_water_total": clean_water_total,
+        "water_levels_matrix": water_levels_matrix.tolist(),
+        "contamination_matrix": contamination_matrix.tolist(),
+        "moisture_levels_matrix": moisture_levels_matrix.tolist(),
+        "soil_contamination_matrix": soil_contamination_matrix.tolist(),
+        "evaporation_modifiers_matrix": evaporation_modifiers_matrix.tolist(),
+        "weather_info": weather_info,
+        "map_width": weather_and_water_info.width,
+        "map_height": weather_and_water_info.height
+    }
+
+    # Save historical data
+    historical_data_handler.save_historical_data(historical_data_entry)
 
     # Common layout for all heatmaps
     common_layout = dict(
