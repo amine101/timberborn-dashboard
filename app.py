@@ -152,7 +152,6 @@ def process_save_files(files, save_handler):
         return [html.Span("No save file found in the specified directory.", style={"color": "red"})] * 18
 
     path = files[-1]  # Use the latest file
-    print(f"Processing Save file: {path}")
     game_data = save_handler.read_world_data(path)
     if not game_data:
         return [html.Span("Failed to read the save file.", style={"color": "red"})] * 18
@@ -274,7 +273,6 @@ def handle_buttons(load_clicks, update_clicks, n_intervals, folder_path, tempera
     ctx = callback_context
     if not ctx.triggered:
         raise PreventUpdate
-    print("Button triggered")
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
     if button_id == 'load-save-button':
