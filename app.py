@@ -6,12 +6,10 @@ import dash
 from dash import Dash, dcc, html, Input, Output, State, callback_context
 import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
-import webbrowser
 from threading import Timer
-from utils.tools import SaveFileHandler, HistoricalDataHandler, SettingsModifier, WeatherAndWaterAndMoistureInfo, check_port
+from utils.tools import SaveFileHandler, HistoricalDataHandler, SettingsModifier, WeatherAndWaterAndMoistureInfo, check_port, open_browser
 import time
 
-PORT = 8050
 # Initialize Dash app
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
@@ -33,13 +31,14 @@ app.layout = dbc.Container([
         dbc.Col([
             html.Label("Save Folder Path:"),
             dbc.Input(id='folder-path-input', type='text', placeholder="Enter folder path here...", className='mb-2'),
-            html.Div(get_folder_suggestions(), id='folder-suggestions', className='mb-2', style={"color": "blue"}),  # Suggestions for game save directory
+            html.Div(get_folder_suggestions(), id='folder-suggestions', className='mb-2', style={"color": "blue"}),
             dbc.Checkbox(
                 id='analyze-all-files',
                 className="mb-3",
                 label="Analyze all existing .timber files"
             ),
-            dbc.Button("Load Save Files", id='load-save-button', color="primary", className="mb-3")
+            dbc.Button("Load Save Files", id='load-save-button', color="primary", className="mb-3"),
+            html.Div(id='folder-path', className='mb-2')  # Added this line
         ])
     ]),
     dbc.Row([
@@ -148,10 +147,12 @@ def load_save_files(folder_path, analyze_all):
 
 # Helper function to process save files and return required outputs
 def process_save_files(files, save_handler):
+    
     if not files:
         return [html.Span("No save file found in the specified directory.", style={"color": "red"})] * 18
 
     path = files[-1]  # Use the latest file
+    print(f"Processing Save file: {path}")
     game_data = save_handler.read_world_data(path)
     if not game_data:
         return [html.Span("Failed to read the save file.", style={"color": "red"})] * 18
@@ -273,7 +274,7 @@ def handle_buttons(load_clicks, update_clicks, n_intervals, folder_path, tempera
     ctx = callback_context
     if not ctx.triggered:
         raise PreventUpdate
-
+    print("Button triggered")
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
     if button_id == 'load-save-button':
@@ -332,15 +333,17 @@ def handle_buttons(load_clicks, update_clicks, n_intervals, folder_path, tempera
 
     return folder_path, temperate_min, temperate_max, drought_min, drought_max, badtide_min, badtide_max, "", "", go.Figure(), go.Figure(), go.Figure(), go.Figure(), go.Figure(), "", False, False
 
-# Function to open the browser after a delay
-def open_browser():
-    webbrowser.open_new(f"http://127.0.0.1:{PORT}/")
+
 
 if __name__ == "__main__":
-    Timer(1, open_browser).start()
-    if check_port(PORT):
-        app.run_server(debug=False, host="127.0.0.1", port=PORT)
+    PORT = 8050
+    debug = True  # Change this based on your current debugging needs
+    port_available = check_port(PORT)
+
+    if port_available:
+        print(f"Starting server{' in debug mode...' if debug else '...'}")
+        Timer(1, open_browser, args=(PORT,)).start()  # Open browser shortly after server starts
+        app.run_server(debug=debug, use_reloader=False, host="127.0.0.1", port=PORT)
     else:
         print(f"Error, another instance is already running (port {PORT} in use)")
-
     time.sleep(10)

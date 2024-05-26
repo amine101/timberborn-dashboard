@@ -92,10 +92,10 @@ class HistoricalDataHandler:
 # Class to modify game settings
 class SettingsModifier:
     def __init__(self, game_data):
-        self.game_data = game_data
+        self.singletons = game_data['Singletons']
 
     def update_settings(self, new_values):
-        singletons = self.game_data['Singletons']
+        
         settings = {
             'temperate_min': ('TemperateWeatherDurationService', 'MinTemperateWeatherDuration'),
             'temperate_max': ('TemperateWeatherDurationService', 'MaxTemperateWeatherDuration'),
@@ -106,31 +106,54 @@ class SettingsModifier:
         }
         for key, (service, attr) in settings.items():
             value = int(new_values[key])
-            singletons[service][attr] = value
+            self.singletons[service][attr] = value
 
     def get_current_settings(self):
-        singletons = self.game_data['Singletons']
         settings = {
-            'temperate_min': singletons['TemperateWeatherDurationService']['MinTemperateWeatherDuration'],
-            'temperate_max': singletons['TemperateWeatherDurationService']['MaxTemperateWeatherDuration'],
-            'drought_min': singletons['DroughtWeather']['MinDroughtDuration'],
-            'drought_max': singletons['DroughtWeather']['MaxDroughtDuration'],
-            'badtide_min': singletons['BadtideWeather']['MinBadtideWeatherDuration'],
-            'badtide_max': singletons['BadtideWeather']['MaxBadtideWeatherDuration'],
+            'temperate_min': self.singletons['TemperateWeatherDurationService']['MinTemperateWeatherDuration'],
+            'temperate_max': self.singletons['TemperateWeatherDurationService']['MaxTemperateWeatherDuration'],
+            'drought_min': self.singletons['DroughtWeather']['MinDroughtDuration'],
+            'drought_max': self.singletons['DroughtWeather']['MaxDroughtDuration'],
+            'badtide_min': self.singletons['BadtideWeather']['MinBadtideWeatherDuration'],
+            'badtide_max': self.singletons['BadtideWeather']['MaxBadtideWeatherDuration'],
         }
         return settings
+    
+
+class BeaverInfo:  # Currently not used anywhere
+    def __init__(self, game_data):
+        self.game_data = game_data
+
+    def get_beaver_counts(self):
+        entities = self.game_data['Entities']
+        total_beavers = 0
+        adult_beavers = 0
+        child_beavers = 0
+
+        for entity in entities:
+            if 'Template' in entity:
+                if entity['Template'] == 'BeaverAdult':
+                    adult_beavers += 1
+                    total_beavers += 1
+                elif entity['Template'] == 'BeaverChild':
+                    child_beavers += 1
+                    total_beavers += 1
+
+        return total_beavers, adult_beavers, child_beavers
+
+
 
 # Class to handle weather, water, and moisture information
 class WeatherAndWaterAndMoistureInfo:
     def __init__(self, game_data):
-        self.game_data = game_data
+        self.singletons = game_data['Singletons']
         self.clean_water_levels = []
-        self.width = self.game_data['Singletons']['MapSize']['Size']['X']
-        self.height = self.game_data['Singletons']['MapSize']['Size']['Y']
+        self.width = self.singletons['MapSize']['Size']['X']
+        self.height = self.singletons['MapSize']['Size']['Y']
 
     def calculate_total_clean_water(self):
-        water_depths_str = self.game_data['Singletons']['WaterMap']['WaterDepths']['Array']
-        contamination_levels_str = self.game_data['Singletons']['ContaminationMap']['Contaminations']['Array']
+        water_depths_str = self.singletons['WaterMap']['WaterDepths']['Array']
+        contamination_levels_str = self.singletons['ContaminationMap']['Contaminations']['Array']
         water_depths = np.array([float(depth) for depth in water_depths_str.split()])
         contamination_levels = np.array([float(level) for level in contamination_levels_str.split()])
         
@@ -142,8 +165,8 @@ class WeatherAndWaterAndMoistureInfo:
         return total_clean_water
     
     def get_weather_info(self):
-        hazardous_weather = self.game_data['Singletons']['HazardousWeatherService']
-        weather_service = self.game_data['Singletons']['WeatherService']
+        hazardous_weather = self.singletons['HazardousWeatherService']
+        weather_service = self.singletons['WeatherService']
 
         weather_info = {
             'HazardousWeatherDuration': hazardous_weather['HazardousWeatherDuration'],
@@ -156,32 +179,32 @@ class WeatherAndWaterAndMoistureInfo:
         return weather_info
 
     def get_water_levels_matrix(self):
-        water_depths_str = self.game_data['Singletons']['WaterMap']['WaterDepths']['Array']
+        water_depths_str = self.singletons['WaterMap']['WaterDepths']['Array']
         water_depths = np.array([float(depth) for depth in water_depths_str.split()])
         water_levels_matrix = water_depths.reshape((self.height, self.width)).T  # Transpose the matrix
         return water_levels_matrix
 
     def get_contamination_percentage_matrix(self):
-        contamination_levels_str = self.game_data['Singletons']['ContaminationMap']['Contaminations']['Array']
+        contamination_levels_str = self.singletons['ContaminationMap']['Contaminations']['Array']
         contamination_levels = np.array([float(level) for level in contamination_levels_str.split()])
         contamination_percentage_matrix = contamination_levels.reshape((self.height, self.width)).T  # Transpose the matrix
         return contamination_percentage_matrix
 
     def get_moisture_levels_matrix(self):
-        moisture_levels_str = self.game_data['Singletons']['SoilMoistureSimulator']['MoistureLevels']['Array']
+        moisture_levels_str = self.singletons['SoilMoistureSimulator']['MoistureLevels']['Array']
         moisture_levels = np.array([float(level) for level in moisture_levels_str.split()])
         moisture_levels_matrix = moisture_levels.reshape((self.height, self.width)).T  # Transpose the matrix
         return moisture_levels_matrix
 
     def get_soil_contamination_matrix(self):
-        soil_contamination_str = self.game_data['Singletons']['SoilContaminationSimulator']['ContaminationLevels']['Array']
+        soil_contamination_str = self.singletons['SoilContaminationSimulator']['ContaminationLevels']['Array']
         soil_contamination = np.array([float(level) for level in soil_contamination_str.split()])
         soil_contamination_matrix = soil_contamination.reshape((self.height, self.width)).T  # Transpose the matrix
         return soil_contamination_matrix
     
 
     def get_evaporation_modifiers_matrix(self):
-        evaporation_modifiers_str = self.game_data['Singletons']['WaterEvaporationMap']['EvaporationModifiers']['Array']
+        evaporation_modifiers_str = self.singletons['WaterEvaporationMap']['EvaporationModifiers']['Array']
         # Remove trailing dot characters if present and convert to float
         cleaned_modifiers = [float(modifier.rstrip('.')) for modifier in evaporation_modifiers_str.split()]
         evaporation_modifiers = np.array(cleaned_modifiers)
