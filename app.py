@@ -179,6 +179,7 @@ def process_save_files(files, save_handler):
     ]
 
     historical_data_handler = HistoricalDataHandler(save_handler.directory)
+    historical_data_handler.migratejson_to_db()  # migrate from the old json storage to a sqlite3 db storage
     historical_data_entry = {
         "timestamp": save_handler.latest_timestamp,
         "clean_water_total": clean_water_total,
